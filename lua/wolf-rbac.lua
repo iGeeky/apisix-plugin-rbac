@@ -168,7 +168,7 @@ local function check_url_permission(server, appid, action, resName, clientIP, wo
     local userInfo = nil
     local res = nil
     local err = nil
-    local access_check_url = server .. "/api/v1/rbac/access_check"
+    local access_check_url = server .. "/wolf/rbac/access_check"
     local headers = new_headers()
     headers["x-rbac-token"] = wolf_token
     headers["Content-Type"] = "application/json; charset=utf-8"
@@ -328,7 +328,7 @@ local function login()
 
     core.log.info("consumer: ", core.json.delay_encode(consumer))
 
-    local uri = consumer.auth_conf.server .. '/api/v1/rbac/login.rest'
+    local uri = consumer.auth_conf.server .. '/wolf/rbac/login.rest'
     local headers = new_headers()
     headers["Content-Type"] = "application/json; charset=utf-8"
     local timeout = 1000 * 5
