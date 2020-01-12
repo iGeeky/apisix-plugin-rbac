@@ -294,7 +294,8 @@ local function get_args(name, kind)
     local args
     if ngx.req.get_method() == "POST" then
         if string.find(ngx.req.get_headers()["Content-Type"] or "",
-                       "application/json", true) then
+                       "application/json", 0) then
+            ngx.req.read_body()
             args = json.decode(ngx.req.get_body_data())
         else
             args = ngx.req.get_post_args()
@@ -367,7 +368,7 @@ end
 function _M.api()
     return {
         {
-            methods = {"GET"},
+            methods = {"GET", "POST"},
             uri = "/apisix/plugin/wolf-rbac/login",
             handler = login,
         }
