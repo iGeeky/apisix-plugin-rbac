@@ -1,6 +1,6 @@
 ## Introductions
 
-`wolf-rbac`是一个认证及授权(rbac)插件，它需要与 `consumer` 一起配合才能工作。同时需要添加 `wolf-rbac` 到一个 `service` 或 `route`中。
+`wolf-rbac`是一个基于[APISIX](https://github.com/apache/incubator-apisix)认证及授权(rbac)插件，它需要与 `consumer` 一起配合才能工作。同时需要添加 `wolf-rbac` 到一个 `service` 或 `route`中。
 rbac功能由[wolf](https://github.com/iGeeky/wolf)提供, 有关wolf的更多信息, 请参考[wolf文档](https://github.com/iGeeky/wolf)。
 
 
