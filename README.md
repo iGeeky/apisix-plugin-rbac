@@ -128,6 +128,7 @@ Server: APISIX web server
 
 ```shell
 curl http://127.0.0.1:9080/apisix/plugin/wolf-rbac/login -i \
+-H "Content-Type: application/x-www-form-urlencoded" \
 -d 'appid=restful&username=test&password=user-password'
 ```
 
