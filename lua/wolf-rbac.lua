@@ -1,3 +1,19 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one or more
+-- contributor license agreements.  See the NOTICE file distributed with
+-- this work for additional information regarding copyright ownership.
+-- The ASF licenses this file to You under the Apache License, Version 2.0
+-- (the "License"); you may not use this file except in compliance with
+-- the License.  You may obtain a copy of the License at
+--
+--     http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing, software
+-- distributed under the License is distributed on an "AS IS" BASIS,
+-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-- See the License for the specific language governing permissions and
+-- limitations under the License.
+--
 
 local core     = require("apisix.core")
 local consumer = require("apisix.consumer")
@@ -64,11 +80,11 @@ end
 local function parse_rbac_token(rbac_token)
     local res, err = ngx_re.split(rbac_token, "#", nil, nil, 3)
     if not res then
-        return { err = err}
+        return nil, err
     end
 
     if #res ~= 3 or res[1] ~= token_version then
-        return { err = 'invalid rbac token: version'}
+        return nil, 'invalid rbac token: version'
     end
     local appid = res[2]
     local wolf_token = res[3]
@@ -219,9 +235,9 @@ function _M.rewrite(conf, ctx)
         return 401, {message = "Missing rbac token in request"}
     end
 
-    local tokenInfo = parse_rbac_token(rbac_token)
-    core.log.info("token info: ", core.json.delay_encode(tokenInfo))
-    if tokenInfo.err then
+    local tokenInfo, err = parse_rbac_token(rbac_token)
+    core.log.info("token info: ", core.json.delay_encode(tokenInfo), ", err: ", err)
+    if err then
         return 401, {message = 'invalid rbac token: parse failed'}
     end
 
