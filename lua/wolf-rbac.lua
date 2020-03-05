@@ -149,9 +149,6 @@ local function http_get(uri, myheaders, timeout)
     return http_req("GET", uri, nil, myheaders, timeout)
 end
 
-local function http_post(uri, body, myheaders, timeout)
-    return http_req("POST", uri, body, myheaders, timeout)
-end
 
 function _M.check_schema(conf)
     core.log.info("input conf: ", core.json.delay_encode(conf))
@@ -182,7 +179,7 @@ local function fetch_rbac_token(ctx)
 end
 
 
-local function check_url_permission(server, appid, action, resName, clientIP, wolf_token)
+local function check_url_permission(server, appid, action, resName, client_ip, wolf_token)
     local retry_max = 3
     local errmsg
     local userInfo
@@ -192,7 +189,7 @@ local function check_url_permission(server, appid, action, resName, clientIP, wo
     local headers = new_headers()
     headers["x-rbac-token"] = wolf_token
     headers["Content-Type"] = "application/json; charset=utf-8"
-    local args = { appID = appid, resName = resName, action = action, clientIP = clientIP}
+    local args = { appID = appid, resName = resName, action = action, clientIP = client_ip}
     local url = access_check_url .. "?" .. ngx.encode_args(args)
     local timeout = 1000 * 10
 
@@ -248,14 +245,14 @@ end
 function _M.rewrite(conf, ctx)
     local url = ctx.var.uri
     local action = ctx.var.request_method
-    local clientIP = core.request.get_ip(ctx)
-    local permItem = {action = action, url = url, clientIP = clientIP}
+    local client_ip = ctx.var.http_x_real_ip or core.request.get_ip(ctx)
+    local perm_item = {action = action, url = url, clientIP = client_ip}
     core.log.info("hit wolf-rbac rewrite")
 
     local rbac_token = fetch_rbac_token(ctx)
     if rbac_token == nil then
         core.log.info("no permission to access ",
-                      core.json.delay_encode(permItem), ", need login!")
+                      core.json.delay_encode(perm_item), ", need login!")
         return 401, fail_response("Missing rbac token in request")
     end
 
@@ -268,8 +265,8 @@ function _M.rewrite(conf, ctx)
 
     local appid = tokenInfo.appid
     local wolf_token = tokenInfo.wolf_token
-    permItem.appid = appid
-    permItem.wolf_token = wolf_token
+    perm_item.appid = appid
+    perm_item.wolf_token = wolf_token
 
     local consumer_conf = consumer.plugin(plugin_name)
     if not consumer_conf then
@@ -289,26 +286,17 @@ function _M.rewrite(conf, ctx)
     core.log.info("consumer: ", core.json.delay_encode(consumer))
     local server = consumer.auth_conf.server
 
-    local url = ctx.var.uri
-    local action = ctx.var.request_method
-    local clientIP = core.request.get_ip(ctx)
-    local permItem = {
-        appid = appid, action = action, url = url,
-        clientIP = clientIP, wolf_token = wolf_token
-    }
-
     local res = check_url_permission(server, appid, action, url,
-                    clientIP, wolf_token)
-    core.log.info(" check_url_permission(", core.json.delay_encode(permItem),
+                    client_ip, wolf_token)
+    core.log.info(" check_url_permission(", core.json.delay_encode(perm_item),
                   ") res: ",core.json.delay_encode(res))
 
-    local userId = nil
     local username = nil
     local nickname = nil
     if type(res.userInfo) == 'table' then
         local userInfo = res.userInfo
         ctx.userInfo = userInfo
-        userId = userInfo.id
+        local userId = userInfo.id
         username = userInfo.username
         nickname = userInfo.nickname or userInfo.username
         local prefix = consumer.auth_conf.header_prefix or ''
@@ -323,7 +311,7 @@ function _M.rewrite(conf, ctx)
     if res.status ~= 200 then
         -- no permission.
         core.log.error(" check_url_permission(",
-            core.json.delay_encode(permItem),
+            core.json.delay_encode(perm_item),
             ") failed, res: ",core.json.delay_encode(res))
         return 401, fail_response(res.err,
             { username = username, nickname = nickname }
@@ -381,7 +369,7 @@ local function request_to_wolf_server(method, uri, headers, body)
     )
 
     core.log.info("request [", request_debug, "] ....")
-    local res, err = http_post(uri, core.json.encode(body), headers, timeout)
+    local res, err = http_req(method, uri, core.json.encode(body), headers, timeout)
     if err or not res then
         core.log.error("request [", request_debug, "] failed! err: ", err)
         return core.response.exit(500,
@@ -440,15 +428,15 @@ local function wolf_rbac_login()
 end
 
 local function get_wolf_token(ctx)
-    local url = ctx.var.uri
-    local action = ctx.var.request_method
-    local clientIP = core.request.get_ip(ctx)
-    local permItem = {action = action, url = url, clientIP = clientIP}
     core.log.info("hit wolf-rbac change_password api")
     local rbac_token = fetch_rbac_token(ctx)
     if rbac_token == nil then
+        local url = ctx.var.uri
+        local action = ctx.var.request_method
+        local client_ip = core.request.get_ip(ctx)
+        local perm_item = {action = action, url = url, clientIP = client_ip}
         core.log.info("no permission to access ",
-                      core.json.delay_encode(permItem), ", need login!")
+                      core.json.delay_encode(perm_item), ", need login!")
         return core.response.exit(401, fail_response("Missing rbac token in request"))
     end
 
